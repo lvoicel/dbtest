@@ -6,6 +6,7 @@ QDesktopWidget, QLabel, QLineEdit, QTextEdit, QGridLayout, QComboBox,
 QFileDialog, QAction, QTableWidget, QTableWidgetItem, )
 from PyQt5.QtGui import (QPixmap, QPainter, QImage, )
 from datetime import datetime
+import time
 from PyQt5.QtCore import (Qt, QSize)
 
 conn = sqlite3.connect("main.db")
@@ -17,14 +18,6 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS base
                 (name text, message text, time text,
                 option text, image blob)
                 """)
-
-class delEdWidget(QWidget):
-    def __init__(self):
-        super().__init__()
-        
-        grid = QGridLayout()
-        grid.addWidget
-
         
 class DataB(QWidget):
 
@@ -38,9 +31,7 @@ class DataB(QWidget):
         author = QLabel('Ф.И.О.')
         message = QLabel('Сообщение')
         option = QLabel('Опция')
-        self.table = QTableWidget(self)
-        self.table.setRowCount(3)
-        self.table.setColumnCount(7)
+
 
         self.authorEdit = QLineEdit(self)
         self.messageEdit = QTextEdit(self)
@@ -68,22 +59,31 @@ class DataB(QWidget):
         grid.addWidget(self.optionDDown, 4, 1)
         
         grid.addWidget(sendBtn, 5, 1)
- 
-        sendBtn.clicked.connect(self.sendRes)
 
+
+        cursor.execute("""SELECT COUNT(*) FROM base""")
+        rows = cursor.fetchone()
+        print(rows)
+        
+        sendBtn.clicked.connect(self.sendRes)
+        self.table = QTableWidget(self)
+        self.table.setRowCount(rows[0])
+        self.table.setColumnCount(7)
         grid.addWidget(self.table, 6, 0, 6, 4)
         edBtn = QPushButton('e')
         delBtn = QPushButton('d')
+
 
 
         cursor.execute("""SELECT * FROM base""")
         res = cursor.fetchall()
         i = 0
         j = 0
+
         if res:
-            for i in range(3):
-                self.table.setCellWidget(0, 5, edBtn)
-                self.table.setCellWidget(0, 6, delBtn)
+            for i in range(rows[0]):
+                #self.table.setCellWidget(0, 5, edBtn)
+                #self.table.setCellWidget(0, 6, delBtn)
                 for j in range(len(res[i])):
                     if (j == 4) & (res[i][j] != 0):
                         pic = BytesIO(res[i][j])
@@ -91,7 +91,7 @@ class DataB(QWidget):
                         pixmap = QPixmap()
                         pixmap.loadFromData(pic.getvalue())
                         image = QTableWidgetItem()
-                        image.setData(Qt.DecorationRole, pixmap)
+                        image.setData(Qt.DecorationRole, pixmap.scaled(50,50))
                         self.table.setItem(i, j, image)
                     else:
                         self.table.setItem(i, j, QTableWidgetItem(res[i][j]))
@@ -108,7 +108,6 @@ class DataB(QWidget):
         print("Оболочка успешно загружена")
 
     def sendRes(self):
-
         authorText = self.authorEdit.text()
         messageText = self.messageEdit.toPlainText()
         optionText = self.optionDDown.currentText()
@@ -140,7 +139,8 @@ class DataB(QWidget):
                 print("Ошибка при чтении файла")
             finally:
                 if fin:
-                    fin.close()     
+                    fin.close()
+                    fin = 0
         
         
 if __name__ == '__main__':
