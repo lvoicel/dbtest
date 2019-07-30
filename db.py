@@ -1,6 +1,8 @@
 from io import BytesIO
 import sqlite3
 import sys
+import logging
+import os
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton,
 QDesktopWidget, QLabel, QLineEdit, QTextEdit, QGridLayout, QComboBox,
 QFileDialog, QAction, QTableWidget, QTableWidgetItem, )
@@ -57,31 +59,40 @@ class DataB(QWidget):
         self.optionDDown.addItems(['По сайту', 'На форуме', 'Везде'])
         grid.addWidget(option, 4, 0)
         grid.addWidget(self.optionDDown, 4, 1)
-        
+
+
+
         grid.addWidget(sendBtn, 5, 1)
-
-
-        cursor.execute("""SELECT COUNT(*) FROM base""")
-        rows = cursor.fetchone()
-        print(rows)
-        
         sendBtn.clicked.connect(self.sendRes)
+
+        self.img = 0
+        
         self.table = QTableWidget(self)
-        self.table.setRowCount(rows[0])
-        self.table.setColumnCount(7)
+
         grid.addWidget(self.table, 6, 0, 6, 4)
         edBtn = QPushButton('e')
         delBtn = QPushButton('d')
+        self.getBase()
+        self.setLayout(grid)
+        self.resize(600, 500)
+        self.setWindowTitle('Db')
 
+        self.table.setMinimumSize(500,300)
+        self.show()
+        print("Оболочка успешно загружена")
 
+    def getBase(self):
+        cursor.execute("""SELECT COUNT(*) FROM base""")
+        self.rows = cursor.fetchone()
+        self.table.setRowCount(self.rows[0])
+        self.table.setColumnCount(7)
 
         cursor.execute("""SELECT * FROM base""")
         res = cursor.fetchall()
         i = 0
         j = 0
-
         if res:
-            for i in range(rows[0]):
+            for i in range(self.rows[0]):
                 #self.table.setCellWidget(0, 5, edBtn)
                 #self.table.setCellWidget(0, 6, delBtn)
                 for j in range(len(res[i])):
@@ -95,24 +106,18 @@ class DataB(QWidget):
                         self.table.setItem(i, j, image)
                     else:
                         self.table.setItem(i, j, QTableWidgetItem(res[i][j]))
-        
-
-
-        self.setLayout(grid)
-        self.resize(600, 500)
-        self.setWindowTitle('Db')
         self.table.resizeColumnsToContents()
         self.table.resizeRowsToContents()
-        self.table.setMinimumSize(500,300)
-        self.show()
-        print("Оболочка успешно загружена")
 
     def sendRes(self):
+ 
         authorText = self.authorEdit.text()
         messageText = self.messageEdit.toPlainText()
         optionText = self.optionDDown.currentText()
-        binary = sqlite3.Binary(self.img)
-        print(binary)
+        if self.img:
+            binary = sqlite3.Binary(self.img)
+        else:
+            binary = 0
         try:
             time = datetime.strftime(datetime.now(), "%d.%m.%Y %H:%M:%S")
             sql = ("INSERT INTO base (name, message, time, option, image) VALUES (?, ?, ?, ?, ?)")
@@ -122,18 +127,17 @@ class DataB(QWidget):
         except:
             conn.rollback()
             print("Ошибка при отправке данных")
+        self.getBase()
 
     def getFile(self):
         fname = QFileDialog.getOpenFileName(self, 'Open file',
                 'c:\\',"Image files (*.jpg *.gif *.png *.bmp)")
         if fname:
-            print(fname)
             filename = fname[0]
             try:
                 fin = open(filename, "rb")
                 print("Получаю файл...")
                 self.img = fin.read()
-                print(self.img)
             except:
                 fin.close()
                 print("Ошибка при чтении файла")
@@ -141,7 +145,7 @@ class DataB(QWidget):
                 if fin:
                     fin.close()
                     fin = 0
-        
+
         
 if __name__ == '__main__':
 
