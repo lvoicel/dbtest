@@ -5,10 +5,9 @@ import logging
 import os
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton,
 QDesktopWidget, QLabel, QLineEdit, QTextEdit, QGridLayout, QComboBox,
-QFileDialog, QAction, QTableWidget, QTableWidgetItem, )
+QFileDialog, QAction, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtGui import (QPixmap, QPainter, QImage, )
 from datetime import datetime
-import time
 from PyQt5.QtCore import (Qt, QSize)
 
 conn = sqlite3.connect("main.db")
@@ -17,7 +16,7 @@ print("Подключение к базе данных установлено")
 
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS base
-                (name text, message text, time text,
+                (id int, name text, message text, time text,
                 option text, image blob)
                 """)
         
@@ -30,67 +29,78 @@ class DataB(QWidget):
 
     def initUI(self):
 
-        author = QLabel('Ф.И.О.')
-        message = QLabel('Сообщение')
-        option = QLabel('Опция')
-
+        self.author = QLabel('Ф.И.О.')
+        self.message = QLabel('Сообщение')
+        self.option = QLabel('Опция')
+        self.timeL = QLabel('Время заявки')
+        self.imageL = QLabel('Изображение')
 
         self.authorEdit = QLineEdit(self)
+        self.authorEdit.setMaximumSize(340, 30)
         self.messageEdit = QTextEdit(self)
+        self.messageEdit.setMaximumSize(340, 90)
         fileDownload = QFileDialog()
         self.optionDDown = QComboBox()
-        fileBtn = QPushButton('Загрузить файл')
+        fileBtn = QPushButton('Обзор...')
         sendBtn = QPushButton('Отправить')
-        thBtn = QPushButton('th')
-
+        self.delBtn = QPushButton('Удалить строку')
+        self.fnameEdit = QLineEdit(self)
+        self.fnameEdit.setReadOnly(1)
         
         grid = QGridLayout()
-        grid.setSpacing(10)
+        grid.setSpacing(5)
 
-        grid.addWidget(author, 1, 0)
-        grid.addWidget(self.authorEdit, 1, 1)
+        grid.addWidget(self.author, 1, 0)
+        grid.addWidget(self.authorEdit, 1, 1, 1, 4)
 
-        grid.addWidget(message, 2, 0)
-        grid.addWidget(self.messageEdit, 2, 1)
+        grid.addWidget(self.message, 2, 0)
+        grid.addWidget(self.messageEdit, 2, 1, 1, 4)
 
-        grid.addWidget(fileBtn, 3, 1)
+        grid.addWidget(self.fnameEdit, 3, 1, 1, 3)
+        grid.addWidget(fileBtn, 3, 4)
         fileBtn.clicked.connect(self.getFile)
-
+        
         self.optionDDown.addItems(['По сайту', 'На форуме', 'Везде'])
-        grid.addWidget(option, 4, 0)
-        grid.addWidget(self.optionDDown, 4, 1)
-
-
-
-        grid.addWidget(sendBtn, 5, 1)
+        grid.addWidget(self.option, 4, 0)
+        grid.addWidget(self.optionDDown, 4, 1, 1, 2)
+  
+        grid.addWidget(sendBtn, 4, 3, 1, 2)
         sendBtn.clicked.connect(self.sendRes)
+
+        grid.addWidget(self.delBtn, 4, 6, 1, 2)
+        self.delBtn.clicked.connect(self.delRow)
+        self.delBtn.setMaximumSize(120, 30)
 
         self.img = 0
         
         self.table = QTableWidget(self)
 
-        grid.addWidget(self.table, 6, 0, 6, 4)
+        grid.addWidget(self.table, 5, 0, 7, 8)
         edBtn = QPushButton('e')
         delBtn = QPushButton('d')
         self.getBase()
         self.setLayout(grid)
-        self.resize(600, 500)
+        self.resize(700, 500)
         self.setWindowTitle('Db')
+
+        self.table.setSortingEnabled(1)
 
         self.table.setMinimumSize(500,300)
         self.show()
         print("Оболочка успешно загружена")
 
     def getBase(self):
-        cursor.execute("""SELECT COUNT(*) FROM base""")
+        cursor.execute("""SELECT COUNT(*) FROM base""") 
         self.rows = cursor.fetchone()
         self.table.setRowCount(self.rows[0])
         self.table.setColumnCount(7)
-
+        labels = ("Ф.И.О.", "Сообщение", "Время заявки", "Опция", "Изображение")
+        self.table.setHorizontalHeaderLabels(labels)
         cursor.execute("""SELECT * FROM base""")
         res = cursor.fetchall()
         i = 0
         j = 0
+        idR = 1
         if res:
             for i in range(self.rows[0]):
                 #self.table.setCellWidget(0, 5, edBtn)
@@ -102,15 +112,21 @@ class DataB(QWidget):
                         pixmap = QPixmap()
                         pixmap.loadFromData(pic.getvalue())
                         image = QTableWidgetItem()
-                        image.setData(Qt.DecorationRole, pixmap.scaled(50,50))
+                        image.setData(Qt.DecorationRole, pixmap.scaled(80,80))
                         self.table.setItem(i, j, image)
                     else:
                         self.table.setItem(i, j, QTableWidgetItem(res[i][j]))
         self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table.resizeRowsToContents()
 
+    def delRow(self):
+        currow = self.table.currentRow()
+        self.table.removeRow(currow)
+        
+        print(currow)
+
     def sendRes(self):
- 
         authorText = self.authorEdit.text()
         messageText = self.messageEdit.toPlainText()
         optionText = self.optionDDown.currentText()
@@ -128,12 +144,14 @@ class DataB(QWidget):
             conn.rollback()
             print("Ошибка при отправке данных")
         self.getBase()
+        idR += 1
 
     def getFile(self):
         fname = QFileDialog.getOpenFileName(self, 'Open file',
                 'c:\\',"Image files (*.jpg *.gif *.png *.bmp)")
         if fname:
             filename = fname[0]
+            self.fnameEdit.setText(fname[0])
             try:
                 fin = open(filename, "rb")
                 print("Получаю файл...")
