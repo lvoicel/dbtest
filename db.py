@@ -1,14 +1,14 @@
 from io import BytesIO
 import sqlite3
 import sys
-from PyQt5.Qt import QFont
+from PyQt5.Qt import (QFont)
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton,
     QLabel, QLineEdit, QTextEdit, QGridLayout, QComboBox,
     QFileDialog, QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtGui import QPixmap, QRegExpValidator
-from PyQt5.QtCore import Qt, QRegExp
-from datetime import datetime
+from PyQt5.QtGui import (QPixmap, QRegExpValidator)
+from PyQt5.QtCore import (Qt, QRegExp)
+from datetime import (datetime)
 
 conn = sqlite3.connect("main.db")
 # Connecting to db
@@ -45,14 +45,15 @@ class DataB(QWidget):
         self.imageL = QLabel('Изображение')
         self.authorEdit = QLineEdit(self)
         self.authorEdit.setMaximumSize(340, 30)
-        fio = user.name + " " + user.middleName + " " + user.surName
+        fio = (user.surName + " " + user.name[0] + ". "
+                            + user.middleName[0] + ".")
         if self.userGroup == ("guest" or "user"):
             self.authorEdit.setReadOnly(1)
         self.authorEdit.setText(fio)
         self.setWindowTitle('DB - ' + fio)
         self.messageEdit = QTextEdit(self)
         self.messageEdit.setMaximumSize(340, 90)
-        self.optionDDown = QComboBox()
+        self.status = QComboBox()
         fileBtn = QPushButton('Обзор...')
         sendBtn = QPushButton('Отправить')
         delBtn = QPushButton('Удалить строку')
@@ -67,34 +68,44 @@ class DataB(QWidget):
         grid.addWidget(self.fnameEdit, 3, 1, 1, 3)
         grid.addWidget(fileBtn, 3, 4)
         fileBtn.clicked.connect(self.getFile)
-        self.optionDDown.addItems(['По сайту', 'На форуме', 'Везде'])
+        self.status.addItems(['Принята', 'Дизайн', 'В работу',
+                              'Выполняется', 'Готова', 'Закрыта',
+                              'Отложена'])
         grid.addWidget(self.option, 4, 0)
-        grid.addWidget(self.optionDDown, 4, 1, 1, 2)
+        grid.addWidget(self.status, 4, 1, 1, 2)
         grid.addWidget(sendBtn, 4, 3, 1, 2)
         sendBtn.clicked.connect(self.sendRes)
-        grid.addWidget(delBtn, 4, 6, 1, 2)
+        reloadBtn = QPushButton("Обновить")
+        grid.addWidget(reloadBtn, 4, 5)
+        grid.addWidget(delBtn, 4, 6)
+        reloadBtn.clicked.connect(self.getBase)
         delBtn.clicked.connect(self.delRow)
         delBtn.setMaximumSize(120, 30)
         self.img = 0
         self.table = QTableWidget(self)
-        grid.addWidget(self.table, 5, 0, 7, 8)
-        self.getBase()
+        self.table.setSortingEnabled(1)
+        grid.addWidget(self.table, 5, 0, 7, 7)
+        if self.userGroup == ("admin" or "user"):
+            self.getBase()
         self.setLayout(grid)
         self.resize(700, 500)
-        self.table.setSortingEnabled(1)
         self.table.setMinimumSize(500, 300)
         print("Оболочка успешно загружена")
 
     def getBase(self):
         # Creating a QTableWidget
         cursor.execute("SELECT COUNT(*) FROM base")
+        self.table.sortByColumn(0, Qt.SortOrder(0))
+        self.table.setRowCount(0)
         self.rows = cursor.fetchone()
         self.table.setRowCount(self.rows[0])
         self.table.setColumnCount(6)
         labels = (
-            "№", "Ф.И.О.", "Сообщение", "Время заявки", "Опция", "Изображение")
+            "№", "Ф.И.О.", "Комментарии", "Время заявки",
+            "Опция", "Изображение")
         self.table.setHorizontalHeaderLabels(labels)
         cursor.execute("SELECT * FROM base")
+
         res = cursor.fetchall()
         i = 0
         j = 0
@@ -118,23 +129,45 @@ class DataB(QWidget):
                             Qt.DecorationRole, pixmap.scaled(
                                 80, 80, Qt.KeepAspectRatio))
                         self.table.setItem(i, j, image)
+                    elif (j == 3):
+                        item = QTableWidgetItem(res[i][j])
+                        item.setTextAlignment(Qt.AlignCenter)
+                        self.table.setItem(i, j, item)
                     else:
                         item = QTableWidgetItem(res[i][j])
                         if self.userGroup == ("guest" or "user"):
                             item.setFlags(Qt.ItemIsEditable)
                         self.table.setItem(i, j, item)
+
+        self.table.verticalHeader().hide()
         self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().setDe
         self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.Stretch)
+            0, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(
+            4, QHeaderView.Fixed)
+        self.table.horizontalHeader().setSectionResizeMode(
+            5, QHeaderView.Fixed)
+        self.table.horizontalHeader().resizeSection(1, 110)
         self.table.resizeRowsToContents()
+        self.table.sortByColumn(0, Qt.SortOrder(1))
 
     def delRow(self):
         # Deliting selected row from QTable and db function
         curr = self.table.currentRow()
-        currow = self.table.item(curr, 0).text()
-        cursor.execute("DELETE FROM base WHERE num = ?", (currow, ))
-        conn.commit()
-        self.table.removeRow(curr)
+        if self.table.item(curr, 0) is None:
+            print("Строка не выбрана")
+        else:
+            currow = self.table.item(curr, 0).text()
+            cursor.execute("DELETE FROM base WHERE num = ?", (currow, ))
+            conn.commit()
+            self.getBase()
 
     def sendRes(self):
         # Sending data in db function
@@ -146,7 +179,7 @@ class DataB(QWidget):
             idR = curid + 1
         authorText = self.authorEdit.text()
         messageText = self.messageEdit.toPlainText()
-        optionText = self.optionDDown.currentText()
+        optionText = self.status.currentText()
         if self.img:
             # Image blob
             binary = sqlite3.Binary(self.img)
@@ -161,10 +194,13 @@ class DataB(QWidget):
                 idR, authorText, messageText, time, optionText, binary))
             conn.commit()
             print("Данные отправлены")
+            self.fnameEdit.setText("")
+            self.messageEdit.setText("")
         except ConnectionError:
             conn.rollback()
             print("Ошибка при отправке данных")
-        self.getBase()
+        if self.userGroup == ("admin" or "user"):
+            self.getBase()
 
     def getFile(self):
         # Selecting an image for sending in db
@@ -185,6 +221,24 @@ class DataB(QWidget):
                     fin = 0
                 except UnboundLocalError:
                     print("Файл не выбран")
+
+
+class Order:
+    num = 0
+    client = ""
+    name = ""
+    typeOfWorks = ()
+    status = ""
+    price = ''
+    startDate = ''
+    endDate = ''
+    manager = ''
+    filePath = ''
+    preview = ''
+    lastModified = ''
+    material = ()
+    implementer = ()
+    isOver = bool
 
 
 class User:
@@ -209,7 +263,7 @@ class Auth(QWidget):
         super(Auth, self).__init__()
         # Design of authentication window
         self.setWindowTitle('Авторизация')
-        validator = QRegExp("[А-Яа-яA-Za-z0-9- _]+")
+        validator = QRegExp("[А-Яа-яA-Za-z0-9-_]+")
         grid = QGridLayout()
         self.setLayout(grid)
         self.resize(400, 200)
@@ -226,6 +280,7 @@ class Auth(QWidget):
         self.password.setValidator(QRegExpValidator(validator))
         self.password.setMaxLength(10)
         self.password.returnPressed.connect(self.authorize)
+        self.login.returnPressed.connect(self.authorize)
         self.authBtn = QPushButton('Войти')
         self.authBtn.setMaximumSize(200, 50)
         grid.setSpacing(2)
@@ -242,7 +297,15 @@ class Auth(QWidget):
         cursor.execute(
             "SELECT pass FROM users WHERE login = ?", (str(login), ))
         result = cursor.fetchone()
-        if (result[0]) and (result[0] == str(password)):
+        if result is None:
+            self.msg.setText("""<h1 style="color: rgb(250, 55, 55);">
+                Неверная пара логин|пароль</h1>""")
+            self.msg.setFont(QFont("Arial Bold", 6, QFont.Bold))
+        elif (result[0] != str(password)):
+            self.msg.setText("""<h1 style="color: rgb(250, 55, 55);">
+                Неверная пара логин|пароль</h1>""")
+            self.msg.setFont(QFont("Arial Bold", 6, QFont.Bold))
+        elif result[0] == str(password):
             cursor.execute(
                 "SELECT * FROM users WHERE login = ?", (str(login), ))
             result = cursor.fetchone()
@@ -254,10 +317,6 @@ class Auth(QWidget):
             CurUser.login = result[5]
             CurUser.password = result[6]
             self.showDataB()
-        if (result[0]) is None or (result[0] != str(password)):
-            self.msg.setText("""<h1 style="color: rgb(250, 55, 55);">
-                Неверная пара логин|пароль</h1>""")
-            self.msg.setFont(QFont("Arial Bold", 6, QFont.Bold))
 
     def showDataB(self):
         self.db = DataB()
