@@ -23,7 +23,7 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS base
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS users
                 (num int, name text, surname text, middlename text,
-                usergroup text, login text, pass text)
+                usergroup text, login text, pass text, tel text, email text)
                 """)
 
 
@@ -44,7 +44,7 @@ class DataB(QWidget):
         self.timeL = QLabel('Время заявки')
         self.imageL = QLabel('Изображение')
         self.authorEdit = QLineEdit(self)
-        self.authorEdit.setMaximumSize(340, 30)
+        self.authorEdit.setMaximumHeight(30)
         fio = (user.surName + " " + user.name[0] + ". "
                             + user.middleName[0] + ".")
         if self.userGroup == ("guest" or "user"):
@@ -52,7 +52,7 @@ class DataB(QWidget):
         self.authorEdit.setText(fio)
         self.setWindowTitle('DB - ' + fio)
         self.messageEdit = QTextEdit(self)
-        self.messageEdit.setMaximumSize(340, 90)
+        self.authorEdit.setMaximumHeight(90)
         self.status = QComboBox()
         fileBtn = QPushButton('Обзор...')
         sendBtn = QPushButton('Отправить')
@@ -94,6 +94,7 @@ class DataB(QWidget):
 
     def getBase(self):
         # Creating a QTableWidget
+        # curOrder = Order()
         cursor.execute("SELECT COUNT(*) FROM base")
         self.table.sortByColumn(0, Qt.SortOrder(0))
         self.table.setRowCount(0)
@@ -141,7 +142,6 @@ class DataB(QWidget):
 
         self.table.verticalHeader().hide()
         self.table.resizeColumnsToContents()
-        self.table.horizontalHeader().setDe
         self.table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.Fixed)
         self.table.horizontalHeader().setSectionResizeMode(
@@ -223,7 +223,9 @@ class DataB(QWidget):
                     print("Файл не выбран")
 
 
-class Order:
+class Order(object):
+    def __init__(self):
+        super(Order, self).__init__()
     num = 0
     client = ""
     name = ""
@@ -233,7 +235,7 @@ class Order:
     startDate = ''
     endDate = ''
     manager = ''
-    filePath = ''
+    filesPath = ''
     preview = ''
     lastModified = ''
     material = ()
@@ -241,17 +243,7 @@ class Order:
     isOver = bool
 
 
-class User:
-    num = 0
-    name = ""
-    surName = ""
-    middleName = ""
-    userGroup = ""
-    login = ""
-    password = ""
-
-
-class CurUser(User):
+class CurUser(object):
     def __init__(self):
         super(CurUser, self).__init__()
 
@@ -283,12 +275,16 @@ class Auth(QWidget):
         self.login.returnPressed.connect(self.authorize)
         self.authBtn = QPushButton('Войти')
         self.authBtn.setMaximumSize(200, 50)
+        self.regBtn = QPushButton('Регистрация')
+        self.regBtn.setMaximumSize(200, 30)
         grid.setSpacing(2)
         grid.addWidget(self.msg, 1, 1, 1, 3)
         grid.addWidget(self.login, 2, 2)
         grid.addWidget(self.password, 3, 2)
         grid.addWidget(self.authBtn, 4, 2)
+        grid.addWidget(self.regBtn, 5, 2)
         self.authBtn.clicked.connect(self.authorize)
+        self.regBtn.clicked.connect(self.register)
 
     def authorize(self):
         # Creating "User" object from db to log in
@@ -321,6 +317,102 @@ class Auth(QWidget):
     def showDataB(self):
         self.db = DataB()
         self.db.show()
+        self.close()
+
+    def register(self):
+        self.reg = Register()
+        self.reg.show()
+        self.close()
+
+
+class Register(QWidget):
+
+    def __init__(self):
+        super(Register, self).__init__()
+        # Design of registration window
+        self.setWindowTitle('Регистрация')
+        validator = QRegExp("[А-Яа-яA-Za-z0-9-_]+")
+        val2 = QRegExp("[А-яа-я]+")
+        grid = QGridLayout()
+        self.setLayout(grid)
+        self.resize(300, 240)
+        self.msg = QLabel("")
+        self.msg.setAlignment(Qt.AlignCenter)
+        self.msg.setMaximumSize(400, 30)
+        self.msg.setFont(QFont("Arial Bold", 6, QFont.Bold))
+        self.name = QLineEdit("Имя")
+        self.name.setMaximumWidth(200)
+        self.name.setValidator(QRegExpValidator(val2))
+        self.middleName = QLineEdit("Отчество")
+        self.middleName.setMaximumWidth(200)
+        self.middleName.setValidator(QRegExpValidator(validator))
+        self.surName = QLineEdit("Фамилия")
+        self.surName.setMaximumWidth(200)
+        self.surName.setValidator(QRegExpValidator(validator))
+        self.login = QLineEdit("Логин")
+        self.login.setMaximumWidth(200)
+        self.login.setValidator(QRegExpValidator(validator))
+        self.login.setMaxLength(10)
+        self.password = QLineEdit("Пароль")
+        self.password.setEchoMode(QLineEdit.Password)
+        self.password.setMaximumWidth(200)
+        self.password.setValidator(QRegExpValidator(validator))
+        self.password.setMaxLength(10)
+        self.password.returnPressed.connect(self.push)
+        self.password2 = QLineEdit("Пароль")
+        self.password2.setEchoMode(QLineEdit.Password)
+        self.password2.setMaximumWidth(200)
+        self.password2.setValidator(QRegExpValidator(validator))
+        self.password2.setMaxLength(10)
+        self.password2.returnPressed.connect(self.push)
+        self.login.returnPressed.connect(self.push)
+        self.regBtn = QPushButton('Зарегистрироваться')
+        self.regBtn.setMaximumSize(200, 50)
+        self.backBtn = QPushButton('Назад')
+        self.backBtn.setMaximumSize(50, 50)
+        grid.setSpacing(5)
+        grid.addWidget(self.msg, 1, 1, 1, 5)
+        grid.addWidget(self.name, 2, 2, 1, 3)
+        grid.addWidget(self.middleName, 3, 2, 1, 3)
+        grid.addWidget(self.surName, 4, 2, 1, 3)
+        grid.addWidget(self.login, 5, 2, 1, 3)
+        grid.addWidget(self.password, 6, 2, 1, 3)
+        grid.addWidget(self.password2, 7, 2, 1, 3)
+        grid.addWidget(self.regBtn, 8, 3, 1, 2)
+        grid.addWidget(self.backBtn, 8, 2)
+        self.regBtn.clicked.connect(self.push)
+        self.backBtn.clicked.connect(self.ok)
+
+    def push(self):
+        cursor.execute("SELECT MAX(`num`) FROM users")
+        lastId = cursor.fetchone()[0]
+        userGroup = 'user'
+        if lastId is None:
+            idU = 1
+        else:
+            idU = lastId + 1
+        cursor.execute("SELECT * FROM users WHERE login = ?",
+                       (self.login.text(), ))
+        res = cursor.fetchone()
+        if res[0] is None:
+            sql = ("""INSERT INTO users (num, name, surname, middlename, usergroup, login, pass)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)""")
+            cursor.execute(sql, (int(idU), self.name.text(),
+                                 self.surName.text(),
+                                 self.middleName.text(), userGroup,
+                                 self.login.text(), self.password.text()))
+            conn.commit()
+            self.ok()
+        elif (self.password.text() != self.password2.text()):
+            self.msg.setText("""<h1 style="color: rgb(250, 55, 55);">
+                Пароли не совпадают</h1>""")
+        else:
+            self.msg.setText("""<h1 style="color: rgb(250, 55, 55);">
+                Логин уже используется</h1>""")
+
+    def ok(self):
+        self.auth = Auth()
+        self.auth.show()
         self.close()
 
 
