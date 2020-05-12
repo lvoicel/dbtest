@@ -205,7 +205,7 @@ class DataB(QWidget):
     def getFile(self):
         # Selecting an image for sending in db
         fname = QFileDialog.getOpenFileName(
-            self, 'Open file', 'c:\\', "Image files (*.jpg *.gif *.png *.bmp)")
+            self, 'Open file', "./", "Image files (*.jpg *.gif *.png *.bmp)")
         if fname:
             filename = fname[0]
             self.fnameEdit.setText(fname[0])
@@ -394,7 +394,7 @@ class Register(QWidget):
         cursor.execute("SELECT * FROM users WHERE login = ?",
                        (self.login.text(), ))
         res = cursor.fetchone()
-        if res[0] is None:
+        if res is None:
             sql = ("""INSERT INTO users (num, name, surname, middlename, usergroup, login, pass)
                     VALUES (?, ?, ?, ?, ?, ?, ?)""")
             cursor.execute(sql, (int(idU), self.name.text(),
@@ -403,7 +403,7 @@ class Register(QWidget):
                                  self.login.text(), self.password.text()))
             conn.commit()
             self.ok()
-        elif (self.password.text() != self.password2.text()):
+        elif self.password.text() != self.password2.text():
             self.msg.setText("""<h1 style="color: rgb(250, 55, 55);">
                 Пароли не совпадают</h1>""")
         else:
